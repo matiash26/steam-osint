@@ -1,6 +1,6 @@
-certifi==2025.11.12
-charset-normalizer==2.1.1
-colorama==0.4.6
-idna==3.11
+requests
+beautifulsoup4
+colorama
+demjson3
 requests==2.28.1
 urllib3==1.26.20

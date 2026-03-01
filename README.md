@@ -15,6 +15,7 @@ Steam OSINT focuses on **Steam OSINT investigations** by analyzing **public Stea
 
 - Discover **mutual friends** between Steam users  
 - Identify hidden or indirect relationships  
+- Retrieve **all previously used nicknames, names, and URLs** from a Steam account  
 - Support **open source intelligence (OSINT)** investigations  
 - Use Steam as a **social graph data source**
 
@@ -27,6 +28,7 @@ By correlating public Steam information, this tool helps uncover **connections t
 - Mutual friends analysis on Steam  
 - Steam OSINT profile investigation  
 - Identification of external social connections  
+- Retrieve account history: **previous nicknames, names, and URLs**   
 - Cross-platform support (**Windows & Linux**)  
 - Simple and fast **Command-Line Interface (CLI)**
 

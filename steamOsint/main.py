@@ -39,7 +39,7 @@ class MainProgram():
         key = input(F"{BL}${RS} Paste your steam KEY: ").strip()
         if len(key):
             self.osint.setToken(key)
-            print(f"{BR}[{GR}✓{BR}] {GR}Key saved successfully.{RS}")
+            print(f"\n{BR}[{GR}✓{BR}] {GR}Key saved successfully.{RS}")
 
     def scan_target(self):
         print(f"\n EXAMPLE: steamcommunity.com/id/{GR}xxxx{RS} <-")

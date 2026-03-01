@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from textwrap import dedent
 from pathlib import Path
+from .getInfo import GetInfo
 import requests
 import json
 import os
@@ -12,7 +13,6 @@ class Osint:
     def __init__(self):
         self._total = 0
         self._token = None
-        self._steamID = ""
         self._targetFriends = []
         self._mutualFriend = []
         self._mutualDetails = []
@@ -21,16 +21,18 @@ class Osint:
         self._friendUrl = 'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key='
         self._profileURL = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key="
         self._profileDetail = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key="
-        self.getToken() 
+        self.getToken()
+        self.profileCrawling = GetInfo()
         os.makedirs(os.path.dirname(self._path), exist_ok=True)
     def scanProfile(self, steamID):
         user = self.verifySteamID(steamID)
         hasFriend = self.get_friends(user)
+        self.crawlingProfile(user)
         if hasFriend:
             self._targetFriends = hasFriend
             self.run_threads(self._targetFriends,self.friendsOfFriend)
+            print(f"\n{CN}[*] Starting friend enumeration...")
             mutualFriends = self.creatingAccuracy()
-            print(f"{CN}[*] Starting friend enumeration...")
             self.run_threads(mutualFriends,self.detailFromUser)
             self._mutualDetails = sorted(self._mutualDetails, key=lambda friend: friend["accuracy"], reverse=True)
     def verifySteamID (self, user):
@@ -49,7 +51,7 @@ class Osint:
         print(f"    {BR}[{RD}!{RS}]{RD} {RD}A friends list needs to be public.{RS}")
     def friendsOfFriend(self, steamURL):
         try:
-            requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={steamURL["steamid"]}")
+            requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={steamURL['steamid']}")
             friends = json.loads(requestThreads.content)
             if friends:
                 for friendOFfriend in friends["friendslist"]["friends"]:
@@ -76,14 +78,14 @@ class Osint:
                 accuracy = self._mutualFriend.count(Tfriend.get("steamid"))
                 since = self.formatDate(Tfriend.get("friend_since"))
                 mutual.append({
-                "steamid":f"{Tfriend.get("steamid")}", "accuracy": accuracy, "since": since})
+                "steamid":f"{Tfriend.get('steamid')}", "accuracy": accuracy, "since": since})
                 if(accuracy > self._total):
                     self._total = accuracy
         sortedFriend = sorted(mutual, key=lambda friend: friend["accuracy"], reverse=True)[:15]
         return sortedFriend
     def detailFromUser(self, user):
         try:
-            detail = requests.get(f"{self._profileURL}{self._token}&steamids={user["steamid"]}")
+            detail = requests.get(f"{self._profileURL}{self._token}&steamids={user['steamid']}")
             detailContent = json.loads(detail.content)
             self._mutualDetails.append({**user,**detailContent["response"]["players"][0]})
         except:
@@ -116,8 +118,22 @@ class Osint:
                 content = token.read()
                 self._token = content
     def clearList(self):
-        self._steamID = ""
         self._targetFriends = []
         self._mutualFriend = []
         self._mutualDetails = []
         return
+    def crawlingProfile(self, steamId):
+        personaNames = self.profileCrawling.personaNameHistory(steamId)
+        HAS = f"{BR}[{GR}+{BR}]{RS}"
+        print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
+        for name in personaNames:
+            print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
+        realName = self.profileCrawling.realNameHistory(steamId)
+        print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
+        for name in realName:
+            print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
+
+        print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
+        urls = self.profileCrawling.UrlHistory(steamId)
+        for url in urls:
+            print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
