@@ -36,7 +36,7 @@ class Osint:
             self.run_threads(mutualFriends,self.detailFromUser)
             self._mutualDetails = sorted(self._mutualDetails, key=lambda friend: friend["accuracy"], reverse=True)
     def verifySteamID (self, user):
-        if user.isdigit():
+        if "7656119" == user[0:7]:
             return user
         request =  requests.get(f"{self._profileDetail}{self._token}&vanityurl={user}")
         userData = json.loads(request.content)
