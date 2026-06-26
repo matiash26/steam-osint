@@ -123,17 +123,20 @@ class Osint:
         self._mutualDetails = []
         return
     def crawlingProfile(self, steamId):
-        personaNames = self.profileCrawling.personaNameHistory(steamId)
-        HAS = f"{BR}[{GR}+{BR}]{RS}"
-        print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
-        for name in personaNames:
-            print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
-        realName = self.profileCrawling.realNameHistory(steamId)
-        print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
-        for name in realName:
-            print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
+        try:
+            personaNames = self.profileCrawling.personaNameHistory(steamId)
+            HAS = f"{BR}[{GR}+{BR}]{RS}"
+            print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
+            for name in personaNames:
+                print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
+            realName = self.profileCrawling.realNameHistory(steamId)
+            print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
+            for name in realName:
+                print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
 
-        print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
-        urls = self.profileCrawling.UrlHistory(steamId)
-        for url in urls:
-            print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
+            print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
+            urls = self.profileCrawling.UrlHistory(steamId)
+            for url in urls:
+                print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
+        except:
+            print(f"\n[{RD}x{RS}] Error while trying to retrieve the history. It may be temporarily unavailable due to maintenance.")
