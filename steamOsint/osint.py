@@ -121,6 +121,7 @@ class Osint:
         self._targetFriends = []
         self._mutualFriend = []
         self._mutualDetails = []
+        self._total = 0
         return
     def crawlingProfile(self, steamId):
         try:
