@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from textwrap import dedent
 from pathlib import Path
-from .getInfo import GetInfo
+from .steamInfo import SteamInfo
 import requests
 import json
 import os
@@ -22,12 +22,12 @@ class Osint:
         self._profileURL = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key="
         self._profileDetail = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key="
         self.getToken()
-        self.profileCrawling = GetInfo()
+        self.steamInfo = SteamInfo()
         os.makedirs(os.path.dirname(self._path), exist_ok=True)
     def scanProfile(self, steamID):
         user = self.verifySteamID(steamID)
-        hasFriend = self.get_friends(user)
         self.crawlingProfile(user)
+        hasFriend = self.get_friends(user)
         if hasFriend:
             self._targetFriends = hasFriend
             self.run_threads(self._targetFriends,self.friendsOfFriend)
@@ -48,7 +48,7 @@ class Osint:
         friends = json.loads(request.content)
         if friends:
             return friends["friendslist"]["friends"]
-        print(f"    {BR}[{RD}!{RS}]{RD} {RD}A friends list needs to be public.{RS}")
+        print(f"\n\n    {BR}[{RD}!{RS}]{RD} {RD}A friends list needs to be public.{RS}")
     def friendsOfFriend(self, steamURL):
         try:
             requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={steamURL['steamid']}")
@@ -124,19 +124,20 @@ class Osint:
         self._total = 0
         return
     def crawlingProfile(self, steamId):
+        self.steamInfo.run()
         try:
-            personaNames = self.profileCrawling.personaNameHistory(steamId)
+            personaNames = self.steamInfo.fetch("name", steamId)
             HAS = f"{BR}[{GR}+{BR}]{RS}"
             print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
             for name in personaNames:
                 print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
-            realName = self.profileCrawling.realNameHistory(steamId)
+            realName = self.steamInfo.fetch("realName", steamId)
             print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
             for name in realName:
                 print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
 
             print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
-            urls = self.profileCrawling.UrlHistory(steamId)
+            urls = self.steamInfo.fetch("url", steamId)
             for url in urls:
                 print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
         except:
