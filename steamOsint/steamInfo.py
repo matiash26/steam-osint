@@ -2,6 +2,7 @@ import subprocess
 import time
 import urllib.request
 from pathlib import Path
+from .colors import *
 
 import requests
 from playwright.sync_api import sync_playwright
@@ -78,7 +79,6 @@ class SteamInfo:
             return data.get("data")
 
         except Exception as error:
-            print(f"API request failed: {error}")
             return None
 
 
@@ -119,11 +119,11 @@ class SteamInfo:
         for attempt in range(30):
 
             if self.chrome_debug_running():
-                print("Chrome is ready.")
+                print(f"\n   {BR}[{YL}!{RS}]{YL}{YL } Chrome is ready.")
                 return
 
             print(
-                f"Waiting for Chrome... "
+                f"\n   {BR}[{YL}!{RS}]{YL}{YL} Waiting for Chrome... "
                 f"{attempt + 1}/30"
             )
 
@@ -161,7 +161,7 @@ class SteamInfo:
         )
 
     def wait_page(self):
-        print("Don't close your Chrome.")
+        print(f"\n   {BR}[{YL}!{RS}]{YL}{YL} Don't close your Chrome.")
         try:
             self.page.wait_for_load_state(
                 "networkidle",
@@ -169,11 +169,7 @@ class SteamInfo:
             )
 
         except Exception:
-            print(
-                "The networkidle state was not reached. "
-                "Continuing anyway."
-            )
-
+            return
         time.sleep(2)
 
     def get_cookies(self):
@@ -221,8 +217,7 @@ class SteamInfo:
 
             self.chrome_process = None
 
-    def run(self):
-
+    def run(self, steamId):
         try:
             self.start_chrome()
 
@@ -232,9 +227,13 @@ class SteamInfo:
 
             self.wait_page()
 
-            cookies = self.get_cookies()
+            self.get_cookies()
 
-            return cookies
-
+            name =  self.fetch("name", steamId)
+            realName =  self.fetch("realName", steamId)
+            url = self.fetch("url", steamId)
+            
+            return {"name": name, "realName":realName, "url":url}
+        
         finally:
             self.close_chrome()

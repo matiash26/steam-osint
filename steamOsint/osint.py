@@ -16,6 +16,7 @@ class Osint:
         self._targetFriends = []
         self._mutualFriend = []
         self._mutualDetails = []
+        self._history = {"Name", "realName", "url"}
         self._path = BASE_DIR / "settings" / "steamKey.txt"
         self._steamKey = 'https://steamcommunity.com/dev/apikey'
         self._friendUrl = 'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key='
@@ -48,7 +49,7 @@ class Osint:
         friends = json.loads(request.content)
         if friends:
             return friends["friendslist"]["friends"]
-        print(f"\n\n    {BR}[{RD}!{RS}]{RD} {RD}A friends list needs to be public.{RS}")
+        print(f"\n   {BR}[{RD}x{RS}]{RD}{RD} A friends list needs to be public.{RS}")
     def friendsOfFriend(self, steamURL):
         try:
             requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={steamURL['steamid']}")
@@ -124,21 +125,20 @@ class Osint:
         self._total = 0
         return
     def crawlingProfile(self, steamId):
-        self.steamInfo.run()
         try:
-            personaNames = self.steamInfo.fetch("name", steamId)
-            HAS = f"{BR}[{GR}+{BR}]{RS}"
-            print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
-            for name in personaNames:
-                print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
-            realName = self.steamInfo.fetch("realName", steamId)
-            print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
-            for name in realName:
-                print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
-
-            print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
-            urls = self.steamInfo.fetch("url", steamId)
-            for url in urls:
-                print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
+            data = self.steamInfo.run(steamId)
+            if data.get("name"):
+                HAS = f"{BR}[{GR}+{BR}]{RS}"
+                print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
+                for name in data.get("name"):
+                    print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
+                print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
+                for name in data.get("realName"):
+                    print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
+                print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
+                for url in data.get("url"):
+                    print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
+            else:
+                 print(f"\n   {BR}[{RD}x{RS}]{RD} {RD}This user is not indexed, so we can't retrieve their history.{RS}")
         except:
-            print(f"\n[{RD}x{RS}] Error while trying to retrieve the history. It may be temporarily unavailable due to maintenance.")
+                print(f"\n   {BR}[{RD}x{RS}]{RD} {RD}Error while trying to retrieve the history. It may be temporarily unavailable due to maintenance.{RS}")

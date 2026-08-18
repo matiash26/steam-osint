@@ -22,7 +22,7 @@ class MainProgram():
                 self.inputOperation(op_value)
                 self.handle_operation()
             except:
-                print(f"{BR}[{RD}x{BR}]{RS}{RD} Invalid option, please select one of the options.{RS}")
+               print(f"\n   {BR}[{RD}x{BR}]{RS}{RD} Invalid option, please select one of the options.{RS}")
     def handle_operation(self):
         op = self._operation
         if op == 0:
@@ -42,7 +42,7 @@ class MainProgram():
             print(f"\n{BR}[{GR}✓{BR}] {GR}Key saved successfully.{RS}")
 
     def scan_target(self):
-        print(f"\n EXAMPLE: steamcommunity.com/id/{GR}xxxx{RS} <-")
+        print(f"\n   EXAMPLE: steamcommunity.com/id/{GR}xxxx{RS} <-")
         steam_id = input(F"\n{BL}${RS} TARGET ID: ").strip()
         self.osint.scanProfile(steam_id)
         self.osint.showFriends()
