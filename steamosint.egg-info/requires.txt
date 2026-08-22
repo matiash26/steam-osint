@@ -1,0 +1,10 @@
+certifi==2026.7.22
+charset-normalizer==3.5.1
+colorama==0.4.6
+greenlet==3.5.5
+idna==3.18
+playwright==1.62.0
+pyee==13.0.1
+requests==2.34.2
+typing_extensions==4.16.0
+urllib3==2.7.0
