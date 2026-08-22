@@ -127,7 +127,6 @@ class Osint:
     def crawlingProfile(self, steamId):
         try:
             data = self.steamInfo.run(steamId)
-            print(data)
             if data.get("name"):
                 HAS = f"{BR}[{GR}+{BR}]{RS}"
                 print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
