@@ -127,17 +127,18 @@ class Osint:
     def crawlingProfile(self, steamId):
         try:
             data = self.steamInfo.run(steamId)
+            print(data)
             if data.get("name"):
                 HAS = f"{BR}[{GR}+{BR}]{RS}"
                 print(f"\n{HAS}{GR} Target Persona Name History{RS} MM/DD/YYYY")
                 for name in data.get("name"):
-                    print(f"  * {YL}{name['Name']}  {BR}{self.formatDate(name['Timestamp'])}")
+                    print(f"  * {YL}{name.get('Name')}  {BR}{self.formatDate(name.get('Timestamp'))}")
                 print(f"\n{HAS}{GR} Target Real Name History{RS} MM/DD/YYYY")
                 for name in data.get("realName"):
-                    print(f"  * {YL}{name['Name']} : {BR}{self.formatDate(name['Timestamp'])}")
+                    print(f"  * {YL}{name.get('Name')} : {BR}{self.formatDate(name.get('Timestamp'))}")
                 print(f"\n{HAS}{GR} Target Url History{RS} MM/DD/YYYY")
                 for url in data.get("url"):
-                    print(f"  * {BL}{url['URL']} : {BR}{self.formatDate(name['Timestamp'])}")
+                    print(f"  * {BL}{url.get('URL')} : {BR}{self.formatDate(name.get('Timestamp'))}")
             else:
                  print(f"\n   {BR}[{RD}x{RS}]{RD} {RD}This user is not indexed, so we can't retrieve their history.{RS}")
         except:

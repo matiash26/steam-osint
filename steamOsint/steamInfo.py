@@ -230,7 +230,11 @@ class SteamInfo:
             realName =  self.fetch("realName", steamId)
             url = self.fetch("url", steamId)
             
-            return {"name": name, "realName":realName, "url":url}
+            return {
+                "name": name or [],
+                "realName": realName or [],
+                "url": url or []
+                }
         
         finally:
             self.close_chrome()
