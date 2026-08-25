@@ -11,11 +11,12 @@ BASE_DIR = Path(__file__).resolve().parent
 
 class Osint:
     def __init__(self):
-        self._total = 0
         self._token = None
+        self._accuracy = 0
         self._targetFriends = []
-        self._mutualFriend = []
-        self._mutualDetails = []
+        self._targetFriendsComplete = []
+        self._detail = []
+        self._usersFounds = []
         self._history = {"Name", "realName", "url"}
         self._path = BASE_DIR / "settings" / "steamKey.txt"
         self._steamKey = 'https://steamcommunity.com/dev/apikey'
@@ -31,11 +32,11 @@ class Osint:
         hasFriend = self.get_friends(user)
         if hasFriend:
             self._targetFriends = hasFriend
-            self.run_threads(self._targetFriends,self.friendsOfFriend)
+            self.run_threads(self._targetFriends, self.friendsOfFriend)
             print(f"\n{CN}[*] Starting friend enumeration...")
             mutualFriends = self.creatingAccuracy()
-            self.run_threads(mutualFriends,self.detailFromUser)
-            self._mutualDetails = sorted(self._mutualDetails, key=lambda friend: friend["accuracy"], reverse=True)
+            self.run_threads(mutualFriends, self.addingDetail)
+            self._usersFounds = sorted(self._usersFounds,key=lambda friend: next(iter(friend.values()))["accuracy"],reverse=True)
     def verifySteamID (self, user):
         if "7656119" == user[0:7]:
             return user
@@ -50,45 +51,75 @@ class Osint:
         if friends:
             return friends["friendslist"]["friends"]
         print(f"\n   {BR}[{RD}x{RS}]{RD}{RD} A friends list needs to be public.{RS}")
-    def friendsOfFriend(self, steamURL):
+    def friendsOfFriend(self, user):
+        mutualList = []
         try:
-            requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={steamURL['steamid']}")
+            requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={user['steamid']}")
             friends = json.loads(requestThreads.content)
             if friends:
                 for friendOFfriend in friends["friendslist"]["friends"]:
                     for targetFriend in self._targetFriends:
-                        if(friendOFfriend["steamid"] == targetFriend["steamid"]):
-                            self._mutualFriend.append(targetFriend["steamid"])
+                        if friendOFfriend["steamid"] == targetFriend["steamid"]:
+                            mutualList.append(targetFriend["steamid"])
+            detail = self.detailFromUser(user['steamid'])
+            self._targetFriendsComplete.append({
+                 user['steamid']: 
+                    {
+                    **detail,
+                    "accuracy":0, 
+                    "since": self.formatDate(user.get("friend_since")),
+                    "mutual": mutualList
+                    }
+            })
         except:
             print(f"{BR}[{RD}x{BR}]{RS}{RD} An error occurred while retrieving the friends list..{RS}")
     def showFriends(self):
         HAS = f"{BR}[{GR}+{BR}]{RS}"
-        for mutual in self._mutualDetails:
+        for steam in self._usersFounds:
+            key = next(iter(steam))
+            user = steam.get(key)
+            mutualList = user.get("mutual")
+            self.setAcurracy(user.get("accuracy"))
+            mutualNames = self.getMutualNames(mutualList)
             print(dedent(f'''
             {HAS}{GR} Friend found{RS}
-                {self.line(mutual,"personaname")}{YL} Nick        :{BR} {self.formatUser(mutual,"personaname")}
-                {self.line(mutual,"realname")}{YL} Name        :{BR} {self.formatUser(mutual,"realname")}
-                {self.line(mutual,"loccountrycode")}{YL} Country     :{BR} {self.formatUser(mutual,"loccountrycode")}
-                {HAS}{YL} Friend since:{BR} {mutual.get("since")} MM/DD/YYYY
-                {HAS}{YL} Accuracy    :{BR} {self.percentage(mutual)}%
-                {HAS}{YL} Steam       :{BL} https://steamcommunity.com/profiles/{mutual["steamid"]}'''))
+                {self.line(user,"name")}{YL} Nick        :{BR} {self.formatUser(user,"name")}
+                {self.line(user,"realname")}{YL} Name        :{BR} {self.formatUser(user,"realname")}
+                {self.line(user,"country")}{YL} Country     :{BR} {self.formatUser(user,"country")}
+                {HAS}{YL} Friend since:{BR} {user.get("since")} MM/DD/YYYY
+                {HAS}{YL} Accuracy    :{BR} {self.percentage(user)}%
+                {self.line(user,"mutual")}{YL} Mutual      :{BR} [ {mutualNames} ]
+                {HAS}{YL} Steam       :{BL} https://steamcommunity.com/profiles/{user["steamid"]}'''))
     def creatingAccuracy(self):
-        mutual = []
-        for Tfriend in self._targetFriends:
-            if(Tfriend["steamid"] in self._mutualFriend):
-                accuracy = self._mutualFriend.count(Tfriend.get("steamid"))
-                since = self.formatDate(Tfriend.get("friend_since"))
-                mutual.append({
-                "steamid":f"{Tfriend.get('steamid')}", "accuracy": accuracy, "since": since})
-                if(accuracy > self._total):
-                    self._total = accuracy
-        sortedFriend = sorted(mutual, key=lambda friend: friend["accuracy"], reverse=True)[:15]
-        return sortedFriend
-    def detailFromUser(self, user):
+        accuracyList = []
+        for cFriend in self._targetFriendsComplete:
+            counting = 0
+            for mutualFriend in self._targetFriendsComplete:
+                steamID = next(iter(cFriend))
+                key = next(iter(mutualFriend))
+                if steamID in mutualFriend.get(key).get("mutual"):
+                    counting +=1
+                    cFriend[steamID]["accuracy"] = counting
+            accuracyList.append(cFriend)
+        return sorted(accuracyList,key=lambda friend: next(iter(friend.values()))["accuracy"],reverse=True)[:15]
+    def detailFromUser(self, steamid):
+        user =  self.checkDetail(steamid)
         try:
-            detail = requests.get(f"{self._profileURL}{self._token}&steamids={user['steamid']}")
-            detailContent = json.loads(detail.content)
-            self._mutualDetails.append({**user,**detailContent["response"]["players"][0]})
+            if not user:
+                detail = requests.get(f"{self._profileURL}{self._token}&steamids={steamid}")
+                detailContent = json.loads(detail.content)
+                data = detailContent["response"]["players"][0]
+                info = {
+                    "steamid":data.get("steamid"),
+                    "name": data.get("personaname"),
+                    "realname":data.get("realname"),
+                    "url":data.get("url"),
+                    "country":data.get("loccountrycode")
+
+                }
+                self._detail.append(info)
+                return info
+            return user
         except:
             print(F"{BR}[{RD}!{RS}]{RD} failure to seek details about mutual friends {RS}")
     def run_threads(self, friend_list, func):
@@ -100,7 +131,15 @@ class Osint:
             if mutualFriend["accuracy"] > self._total:
                 self._total =  mutualFriend["accuracy"]
     def percentage(self, value):
-        return round((value.get("accuracy") / self._total) * 100)
+        return round((value.get("accuracy") / self._accuracy) * 100)
+    def getMutualNames(self, mutualList):
+        if mutualList:
+            getNameFromMutualList = list(map(lambda steamUser: steamUser.get("name"), mutualList))
+            return f"{BL} | {RS}".join(getNameFromMutualList)
+        return f"{RD}Private friends list.{RS}"
+    def setAcurracy(self, value):
+        if value > self._accuracy:
+            self._accuracy = value
     def formatDate(self,timestamp):
         if timestamp:
             since = datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -118,12 +157,27 @@ class Osint:
             with open(self._path,"r") as token:
                 content = token.read()
                 self._token = content
+
+    def addingDetail(self, user):
+        key = next(iter(user))
+        user = user.get(key)
+        mutual = user.get("mutual")
+        mutualDetail = []
+        if mutual:
+            mutualDetail = list(map(lambda user: self.detailFromUser(user), mutual))
+
+        self._usersFounds.append({ key: {**user, "mutual": mutualDetail }})
+    def checkDetail(self, steamid):
+        for user in self._detail:
+            if user.get("steamid") == steamid:
+                return user
+            return None
     def clearList(self):
+        self._accuracy = 0
         self._targetFriends = []
-        self._mutualFriend = []
-        self._mutualDetails = []
-        self._total = 0
-        return
+        self._targetFriendsComplete = []
+        self._detail = []
+        self._usersFounds = []
     def crawlingProfile(self, steamId):
         try:
             data = self.steamInfo.run(steamId)
