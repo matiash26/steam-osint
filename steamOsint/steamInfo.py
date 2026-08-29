@@ -26,11 +26,7 @@ class SteamInfo:
 
         self.headers = {
             "content-type": "application/json",
-            "user-agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/151.0.0.0 Safari/537.36"
-            ),
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
             "cookie": ""
         }
 
@@ -65,7 +61,6 @@ class SteamInfo:
                 f"&limit=200"
                 f"&search="
             )
-
             response = requests.get(
                 url,
                 headers=self.headers,
@@ -73,9 +68,7 @@ class SteamInfo:
             )
 
             response.raise_for_status()
-
             data = response.json()
-
             return data.get("data")
 
         except Exception as error:
@@ -161,29 +154,27 @@ class SteamInfo:
         )
 
     def wait_page(self):
-        print(f"\n   {BR}[{YL}!{RS}]{YL}{YL} Don't close your Chrome.")
+        print(f"\n   {BR}[{YL}!{RS}]{YL} Don't close your Chrome.")
         try:
             self.page.wait_for_load_state(
                 "networkidle",
-                timeout=30000
+                timeout=10000
             )
 
         except Exception:
             return
-        time.sleep(2)
 
     def get_cookies(self):
         cookies = self.context.cookies(
             ["https://steamhistory.net"]
         )
-
         cookie_string = "; ".join(
             f'{cookie["name"]}={cookie["value"]}'
             for cookie in cookies
         )
-
+        user_agent = self.page.evaluate("navigator.userAgent")
         self.headers["cookie"] = cookie_string
-
+        self.headers["user-agent"] = user_agent
         return cookie_string
 
     def close_chrome(self):

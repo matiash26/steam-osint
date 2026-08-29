@@ -13,11 +13,8 @@ class Osint:
     def __init__(self):
         self._token = None
         self._accuracy = 0
-        self._targetFriends = []
-        self._targetFriendsComplete = []
-        self._detail = []
-        self._usersFounds = []
-        self._history = {"Name", "realName", "url"}
+        self._targetFriends = {}
+        self._userDetail = {}
         self._path = BASE_DIR / "settings" / "steamKey.txt"
         self._steamKey = 'https://steamcommunity.com/dev/apikey'
         self._friendUrl = 'http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key='
@@ -31,12 +28,14 @@ class Osint:
         self.crawlingProfile(user)
         hasFriend = self.get_friends(user)
         if hasFriend:
-            self._targetFriends = hasFriend
-            self.run_threads(self._targetFriends, self.friendsOfFriend)
+            self.addTargetFriends(hasFriend)
+            self.run_threads(self._targetFriends.items(), self.friendsOfFriend)
             print(f"\n{CN}[*] Starting friend enumeration...")
-            mutualFriends = self.creatingAccuracy()
-            self.run_threads(mutualFriends, self.addingDetail)
-            self._usersFounds = sorted(self._usersFounds,key=lambda friend: next(iter(friend.values()))["accuracy"],reverse=True)
+            self.creatingAccuracy()
+            self.addingDetailToMutual()
+            self.addingDetailToCurrentUser()
+            return
+        print(f"\n   {BR}[{RD}x{RS}]{RD}{RD} A friends list needs to be public.{RS}")
     def verifySteamID (self, user):
         if "7656119" == user[0:7]:
             return user
@@ -44,88 +43,87 @@ class Osint:
         userData = json.loads(request.content)
         if userData:
             return userData.get("response").get("steamid")
+    def addTargetFriends(self, friends):
+       self._targetFriends = {
+        user["steamid"]: {
+        "friend_since": user["friend_since"]
+    }
+    for user in friends
+}
     def get_friends(self, steamID):
-        scanProfile = f'{self._friendUrl}{self._token}&steamid={steamID}'
-        request = requests.get(scanProfile)
-        friends = json.loads(request.content)
-        if friends:
-            return friends["friendslist"]["friends"]
-        print(f"\n   {BR}[{RD}x{RS}]{RD}{RD} A friends list needs to be public.{RS}")
-    def friendsOfFriend(self, user):
+        try:
+            scanProfile = f'{self._friendUrl}{self._token}&steamid={steamID}'
+            request = requests.get(scanProfile)
+            friends = request.json()
+            if friends:
+                return friends["friendslist"]["friends"]
+        except:
+            print("o erro está aqui fi")
+            return []
+    def friendsOfFriend(self, steamid, friend):
+        since = friend["friend_since"]
         mutualList = []
         try:
-            requestThreads = requests.get(f"{self._friendUrl}{self._token}&steamid={user['steamid']}")
-            friends = json.loads(requestThreads.content)
+            friends = self.get_friends(steamid)
             if friends:
-                for friendOFfriend in friends["friendslist"]["friends"]:
-                    for targetFriend in self._targetFriends:
-                        if friendOFfriend["steamid"] == targetFriend["steamid"]:
-                            mutualList.append(targetFriend["steamid"])
-            detail = self.detailFromUser(user['steamid'])
-            self._targetFriendsComplete.append({
-                 user['steamid']: 
-                    {
-                    **detail,
-                    "accuracy":0, 
-                    "since": self.formatDate(user.get("friend_since")),
-                    "mutual": mutualList
-                    }
-            })
-        except:
-            print(f"{BR}[{RD}x{BR}]{RS}{RD} An error occurred while retrieving the friends list..{RS}")
+                for friendOFfriend in friends:
+                    if friendOFfriend["steamid"] in self._targetFriends:
+                        mutualList.append(friendOFfriend["steamid"])
+            self._targetFriends[steamid] = {
+                "accuracy":0, 
+                "since": self.formatDate(since),
+                "mutual": mutualList
+                }
+        except Exception as e:
+            print(f"{type(e).__name__}: {e}")
+            print(f"\n   {BR}[{RD}x{RS}]{RD} An error occurred while retrieving the friends list..{RS}")
     def showFriends(self):
         HAS = f"{BR}[{GR}+{BR}]{RS}"
-        for steam in self._usersFounds:
-            key = next(iter(steam))
-            user = steam.get(key)
-            mutualList = user.get("mutual")
-            self.setAcurracy(user.get("accuracy"))
+        for steam in self._targetFriends.values():
+            mutualList = steam.get("mutual")
+            self.setAcurracy(steam.get("accuracy"))
             mutualNames = self.getMutualNames(mutualList)
             print(dedent(f'''
             {HAS}{GR} Friend found{RS}
-                {self.line(user,"name")}{YL} Nick        :{BR} {self.formatUser(user,"name")}
-                {self.line(user,"realname")}{YL} Name        :{BR} {self.formatUser(user,"realname")}
-                {self.line(user,"country")}{YL} Country     :{BR} {self.formatUser(user,"country")}
-                {HAS}{YL} Friend since:{BR} {user.get("since")} MM/DD/YYYY
-                {HAS}{YL} Accuracy    :{BR} {self.percentage(user)}%
-                {self.line(user,"mutual")}{YL} Mutual      :{BR} [ {mutualNames} ]
-                {HAS}{YL} Steam       :{BL} https://steamcommunity.com/profiles/{user["steamid"]}'''))
+                {self.line(steam,"name")}{YL} Nick        :{BR} {self.formatUser(steam,"name")}
+                {self.line(steam,"realname")}{YL} Name        :{BR} {self.formatUser(steam,"realname")}
+                {self.line(steam,"country")}{YL} Country     :{BR} {self.formatUser(steam,"country")}
+                {HAS}{YL} Friend since:{BR} {steam["since"]} MM/DD/YYYY
+                {HAS}{YL} Accuracy    :{BR} {self.percentage(steam)}%
+                {self.line(steam,"mutual")}{YL} Mutual      :{BR} [ {mutualNames} ]
+                {HAS}{YL} Steam       :{BL} {steam["url"]}'''))
     def creatingAccuracy(self):
-        accuracyList = []
-        for cFriend in self._targetFriendsComplete:
+        for steamIDFriend in self._targetFriends:
             counting = 0
-            for mutualFriend in self._targetFriendsComplete:
-                steamID = next(iter(cFriend))
-                key = next(iter(mutualFriend))
-                if steamID in mutualFriend.get(key).get("mutual"):
+            for mutual in self._targetFriends:
+                if steamIDFriend in self._targetFriends.get(mutual).get("mutual"):
                     counting +=1
-                    cFriend[steamID]["accuracy"] = counting
-            accuracyList.append(cFriend)
-        return sorted(accuracyList,key=lambda friend: next(iter(friend.values()))["accuracy"],reverse=True)[:15]
+            self._targetFriends[steamIDFriend]["accuracy"] = counting
+        self._targetFriends = dict(sorted(self._targetFriends.items(),key=lambda item: item[1].get("accuracy", 0),reverse=True)[:10])
     def detailFromUser(self, steamid):
-        user =  self.checkDetail(steamid)
         try:
-            if not user:
-                detail = requests.get(f"{self._profileURL}{self._token}&steamids={steamid}")
-                detailContent = json.loads(detail.content)
-                data = detailContent["response"]["players"][0]
-                info = {
-                    "steamid":data.get("steamid"),
-                    "name": data.get("personaname"),
-                    "realname":data.get("realname"),
-                    "url":data.get("url"),
-                    "country":data.get("loccountrycode")
+            detail = requests.get(f"{self._profileURL}{self._token}&steamids={steamid}")
+            detailContent = detail.json()
+            players = detailContent.get("response", {}).get("players", [])
+            data = players[0]
+            info = {
+                "steamid":data.get("steamid"),
+                "name": data.get("personaname"),
+                "realname":data.get("realname"),
+                "url":data.get("profileurl"),
+                "country":data.get("loccountrycode")
 
                 }
-                self._detail.append(info)
-                return info
-            return user
+            return info
         except:
-            print(F"{BR}[{RD}!{RS}]{RD} failure to seek details about mutual friends {RS}")
+            print(f"\n   {BR}[{RD}x{RS}]{RD} failure to seek details about mutual friends.{RS}")
     def run_threads(self, friend_list, func):
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=20) as executor:
             for friend in friend_list:
-                executor.submit(func,friend)
+                if isinstance(friend, tuple):
+                    executor.submit(func, *friend)
+                else:
+                    executor.submit(func, friend)
     def getTotalPerc(self, friendList):
         for mutualFriend in friendList:
             if mutualFriend["accuracy"] > self._total:
@@ -134,8 +132,8 @@ class Osint:
         return round((value.get("accuracy") / self._accuracy) * 100)
     def getMutualNames(self, mutualList):
         if mutualList:
-            getNameFromMutualList = list(map(lambda steamUser: steamUser.get("name"), mutualList))
-            return f"{BL} | {RS}".join(getNameFromMutualList)
+            nameList = list(map(lambda user: user.get("name"), mutualList.values()))
+            return f"{BL} | {RS}".join(nameList)
         return f"{RD}Private friends list.{RS}"
     def setAcurracy(self, value):
         if value > self._accuracy:
@@ -158,26 +156,28 @@ class Osint:
                 content = token.read()
                 self._token = content
 
-    def addingDetail(self, user):
-        key = next(iter(user))
-        user = user.get(key)
-        mutual = user.get("mutual")
-        mutualDetail = []
-        if mutual:
-            mutualDetail = list(map(lambda user: self.detailFromUser(user), mutual))
-
-        self._usersFounds.append({ key: {**user, "mutual": mutualDetail }})
-    def checkDetail(self, steamid):
-        for user in self._detail:
-            if user.get("steamid") == steamid:
-                return user
-            return None
+    def addingDetailToMutual(self):
+        for userID, user in self._targetFriends.items():
+            mutual = user.get("mutual")
+            detailList = {}
+            for steamid in mutual:
+                if steamid in self._userDetail and steamid in self._targetFriends:
+                    detailList[steamid] = self._userDetail[steamid]
+                elif steamid in self._targetFriends:
+                    detail = self.detailFromUser(steamid)
+                    detailList[steamid] = detail
+                    self._userDetail[steamid] = detail
+            self._targetFriends[userID]["mutual"] = detailList
+    def addingDetailToCurrentUser(self):
+        for steamid, details in self._targetFriends.items():
+            if steamid in self._userDetail:
+                self._targetFriends[steamid] = {**self._userDetail[steamid], **details}
+            else:
+                info = self.detailFromUser(steamid)
+                self._targetFriends[steamid] = {**info, **details}
     def clearList(self):
         self._accuracy = 0
-        self._targetFriends = []
-        self._targetFriendsComplete = []
-        self._detail = []
-        self._usersFounds = []
+        self._targetFriends = {}
     def crawlingProfile(self, steamId):
         try:
             data = self.steamInfo.run(steamId)
@@ -193,6 +193,6 @@ class Osint:
                 for url in data.get("url"):
                     print(f"  * {BL}{url.get('URL')} : {BR}{self.formatDate(name.get('Timestamp'))}")
             else:
-                 print(f"\n   {BR}[{RD}x{RS}]{RD} {RD}This user is not indexed, so we can't retrieve their history.{RS}")
+                 print(f"\n   {BR}[{RD}x{RS}]{RD} This user is not indexed, so we can't retrieve their history.{RS}")
         except:
-                print(f"\n   {BR}[{RD}x{RS}]{RD} {RD}Error while trying to retrieve the history. It may be temporarily unavailable due to maintenance.{RS}")
+                print(f"\n   {BR}[{RD}x{RS}]{RD} Error while trying to retrieve the history. It may be temporarily unavailable due to maintenance.{RS}")
