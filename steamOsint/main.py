@@ -39,11 +39,13 @@ class MainProgram():
         key = input(F"{BL}${RS} Paste your steam KEY: ").strip()
         if len(key):
             self.osint.setToken(key)
-            print(f"\n{BR}[{GR}✓{BR}] {GR}Key saved successfully.{RS}")
+            print(f"\n   {BR}[{GR}✓{BR}]{GR} Key saved successfully.{RS}")
 
     def scan_target(self):
         print(f"\n   EXAMPLE: steamcommunity.com/id/{GR}xxxx{RS} <-")
         steam_id = input(F"\n{BL}${RS} TARGET ID: ").strip()
+        if not steam_id:
+            return;
         self.osint.scanProfile(steam_id)
         self.osint.showFriends()
         self.osint.clearList()

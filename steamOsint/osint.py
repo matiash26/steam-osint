@@ -58,7 +58,6 @@ class Osint:
             if friends:
                 return friends["friendslist"]["friends"]
         except:
-            print("o erro está aqui fi")
             return []
     def friendsOfFriend(self, steamid, friend):
         since = friend["friend_since"]
@@ -95,8 +94,8 @@ class Osint:
     def creatingAccuracy(self):
         for steamIDFriend in self._targetFriends:
             counting = 0
-            for mutual in self._targetFriends:
-                if steamIDFriend in self._targetFriends.get(mutual).get("mutual"):
+            for mutual in self._targetFriends.values():
+                if steamIDFriend in mutual["mutual"]:
                     counting +=1
             self._targetFriends[steamIDFriend]["accuracy"] = counting
         self._targetFriends = dict(sorted(self._targetFriends.items(),key=lambda item: item[1].get("accuracy", 0),reverse=True)[:10])
